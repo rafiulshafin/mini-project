@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow // Next-Gen Productivity & Task Orchestration</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <meta name="theme-color" content="#ff1a40">
+
+  <!-- Typography: Space Grotesk (Display), Inter (Body), JetBrains Mono (Code/HUD) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js for High-Performance Interactive Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="css/style.css?v=2.5">
+</head>
+<body>
+  <!-- Ambient Red/Orange Glow Lighting -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <div class="app-layout">
+    <!-- Futuristic Animated Hero / Header Section -->
+    <header class="cyber-hero">
+      <canvas id="heroCanvas" class="hero-particles-canvas"></canvas>
+      <div class="hero-overlay"></div>
+
+      <!-- Top HUD Navigation Bar -->
+      <nav class="hud-bar">
+        <div class="hud-brand">
+          <div class="cyber-logo">
+            <span class="logo-glyph">⚡</span>
+            <div class="logo-glow-ring"></div>
+          </div>
+          <div>
+            <div class="brand-title">
+              <span class="brand-text">TASKFLOW</span>
+              <span class="brand-tag">v2.5 PRO</span>
+            </div>
+            <div class="hud-system-status">
+              <span class="status-pulse"></span>
+              <span class="status-label">SYS_ACTIVE • 100% HEALTHY</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-center-tools">
+          <button id="globalSearchTrigger" class="hud-search-btn" title="Open Command Palette (Ctrl+K)">
+            <span class="search-icon">⌘</span>
+            <span class="search-text">Command Palette / Search...</span>
+            <span class="search-kbd">Ctrl K</span>
+          </button>
+        </div>
+
+        <div class="hud-actions">
+          <div class="live-clock" id="liveClock">00:00:00 UTC</div>
+
+          <!-- Notification Bell -->
+          <div class="notif-wrapper">
+            <button id="notifBellBtn" class="hud-icon-btn" title="System Notifications">
+              <span>🔔</span>
+              <span id="notifBadge" class="notif-badge" style="display: none;">0</span>
+            </button>
+            <div id="notifDropdown" class="notif-dropdown" style="display: none;">
+              <div class="notif-header">
+                <h4>System Notifications</h4>
+                <button id="clearNotifsBtn" class="btn-text">Clear All</button>
+              </div>
+              <div id="notifList" class="notif-list">
+                <div class="notif-empty">No unread notifications</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Theme Toggle -->
+          <button id="themeToggle" class="hud-icon-btn" title="Toggle Obsidian/Lunar Mode">
+            <span id="themeIcon">☀️</span>
+          </button>
+
+          <!-- Export & Import Backup -->
+          <button id="exportBtn" class="hud-icon-btn" title="Export JSON Database">
+            <span>⬇</span>
+          </button>
+          <label for="importFile" class="hud-icon-btn" title="Restore JSON Database">
+            <span>⬆</span>
+            <input type="file" id="importFile" accept=".json" style="display:none;">
+          </label>
+
+          <!-- Primary New Task Button -->
+          <button id="openNewTaskModal" class="btn btn-cyber-primary">
+            <span class="btn-icon">＋</span>
+            <span>New Task</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Hero Banner Content -->
+      <div class="hero-banner-content">
+        <div class="hero-headlines">
+          <div class="hero-badge-pill">
+            <span class="pulse-chip"></span> NEXT-GEN TASK ORCHESTRATION PLATFORM
+          </div>
+          <h1 class="hero-title">
+            Streamlined Execution. <br>
+            <span class="hero-gradient-text">Relentless Productivity.</span>
+          </h1>
+          <p class="hero-subtitle">
+            Engineered with deep obsidian glass, crimson telemetry, and multi-dimensional project visualization.
+          </p>
+        </div>
+
+        <!-- Productivity Pulse Telemetry Cards -->
+        <div class="hero-kpi-grid">
+          <div class="hero-kpi-card" data-stat="velocity">
+            <div class="kpi-icon">⚡</div>
+            <div class="kpi-info">
+              <span class="kpi-title">VELOCITY INDEX</span>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpiVelocity">94.8%</span>
+                <span class="kpi-delta positive">▲ +12%</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-kpi-card" data-stat="focus">
+            <div class="kpi-icon">🎯</div>
+            <div class="kpi-info">
+              <span class="kpi-title">ACTIVE SPRINT</span>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpiActiveSprint">Sprint 42</span>
+                <span class="kpi-sub">Day 4/7</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-kpi-card" data-stat="overdue">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-info">
+              <span class="kpi-title">DEADLINE RADAR</span>
+              <div class="kpi-value-row">
+                <span class="kpi-value text-red" id="kpiOverdue">0 Alert</span>
+                <span class="kpi-sub" id="kpiDueToday">0 Due Today</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Interactive Analytics Metric Cards -->
+    <section class="metrics-grid">
+      <div class="metric-card glass-panel" data-filter="all">
+        <div class="metric-top">
+          <span class="metric-label">TOTAL WORKSPACE TASKS</span>
+          <span class="metric-badge">ALL</span>
+        </div>
+        <div class="metric-value-row">
+          <div class="metric-value" id="metricTotal">0</div>
+          <div class="metric-spark-icon">📁</div>
+        </div>
+        <div class="metric-sub" id="metricSubTotal">Active pipeline items</div>
+      </div>
+
+      <div class="metric-card glass-panel" data-filter="pending">
+        <div class="metric-top">
+          <span class="metric-label">PENDING / IN FLIGHT</span>
+          <span class="metric-badge badge-amber">IN PROGRESS</span>
+        </div>
+        <div class="metric-value-row">
+          <div class="metric-value text-amber" id="metricPending">0</div>
+          <div class="metric-spark-icon">⏳</div>
+        </div>
+        <div class="metric-sub text-red" id="metricOverdue">0 overdue items</div>
+      </div>
+
+      <div class="metric-card glass-panel" data-filter="completed">
+        <div class="metric-top">
+          <span class="metric-label">COMPLETED MILESTONES</span>
+          <span class="metric-badge badge-emerald">DONE</span>
+        </div>
+        <div class="metric-value-row">
+          <div class="metric-value text-emerald" id="metricCompleted">0</div>
+          <div class="metric-spark-icon">✨</div>
+        </div>
+        <div class="metric-sub" id="metricWeeklyDone">0 completed this week</div>
+      </div>
+
+      <div class="metric-card glass-panel highlight-red">
+        <div class="metric-top">
+          <span class="metric-label">COMPLETION EFFICIENCY</span>
+          <span class="metric-badge badge-red">REAL-TIME</span>
+        </div>
+        <div class="metric-value-row">
+          <div class="metric-value text-red" id="metricRate">0%</div>
+          <div class="metric-spark-icon">📈</div>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="metricProgressBar" style="width: 0%"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Multi-View Navigation Tabs & Global Filter Bar -->
+    <section class="view-controls-bar glass-panel">
+      <!-- Visualization Mode Switcher -->
+      <div class="view-mode-tabs" id="viewModeTabs">
+        <button class="view-tab-btn active" data-view="kanban">
+          <span class="tab-icon">📋</span>
+          <span class="tab-text">Kanban Board</span>
+        </button>
+        <button class="view-tab-btn" data-view="list">
+          <span class="tab-icon">📑</span>
+          <span class="tab-text">Task List</span>
+        </button>
+        <button class="view-tab-btn" data-view="analytics">
+          <span class="tab-icon">📊</span>
+          <span class="tab-text">Analytics & Charts</span>
+        </button>
+        <button class="view-tab-btn" data-view="calendar">
+          <span class="tab-icon">📅</span>
+          <span class="tab-text">Calendar</span>
+        </button>
+        <button class="view-tab-btn" data-view="timeline">
+          <span class="tab-icon">⏱️</span>
+          <span class="tab-text">Timeline</span>
+        </button>
+        <button class="view-tab-btn" data-view="workflow">
+          <span class="tab-icon">🕸️</span>
+          <span class="tab-text">Workflow Flowchart</span>
+        </button>
+        <button class="view-tab-btn" data-view="archived">
+          <span class="tab-icon">🗄️</span>
+          <span class="tab-text">Archive (<span id="archiveCountBadge">0</span>)</span>
+        </button>
+      </div>
+
+      <!-- Filters & Sorting Row -->
+      <div class="filter-controls-row">
+        <!-- Live Search -->
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Filter tasks, tags (#api), notes..." autocomplete="off">
+          <button id="clearSearchBtn" class="clear-btn" style="display: none;">×</button>
+        </div>
+
+        <div class="filter-dropdowns">
+          <!-- Priority Filter -->
+          <select id="priorityFilter" class="select-control">
+            <option value="all">All Priorities</option>
+            <option value="Critical">🔴 Critical</option>
+            <option value="High">🟠 High Priority</option>
+            <option value="Medium">🟡 Medium Priority</option>
+            <option value="Low">🟢 Low Priority</option>
+          </select>
+
+          <!-- Category Filter -->
+          <select id="categoryFilter" class="select-control">
+            <option value="all">All Categories</option>
+          </select>
+
+          <!-- Tag Filter -->
+          <select id="tagFilter" class="select-control">
+            <option value="all">All Tags</option>
+          </select>
+
+          <!-- Sort Order -->
+          <select id="sortBy" class="select-control">
+            <option value="newest">Sort: Newest First</option>
+            <option value="oldest">Sort: Oldest First</option>
+            <option value="dueDate">Sort: Due Date</option>
+            <option value="priority">Sort: Priority</option>
+            <option value="progress">Sort: Progress %</option>
+            <option value="title">Sort: Title (A-Z)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Dynamic Viewports Container -->
+    <main class="viewports-container">
+      <!-- Loading Skeleton Indicator -->
+      <div id="loadingIndicator" class="loading-state glass-panel" style="display: none;">
+        <div class="cyber-spinner"></div>
+        <p class="loading-msg">SYNCHRONIZING TASK STREAM...</p>
+      </div>
+
+      <!-- VIEW 1: KANBAN BOARD (Drag-and-Drop) -->
+      <section id="kanbanView" class="view-panel active">
+        <div class="kanban-grid">
+          <!-- Column 1: To Do -->
+          <div class="kanban-col" data-status="todo">
+            <div class="kanban-col-header">
+              <div class="col-title-group">
+                <span class="col-dot dot-todo"></span>
+                <span class="col-title">TO DO</span>
+                <span class="col-counter" id="countTodo">0</span>
+              </div>
+              <button class="col-quick-add" onclick="openCreateModalWithStatus('todo')" title="Add task to To Do">＋</button>
+            </div>
+            <div class="kanban-dropzone" id="dropzoneTodo" data-status="todo"></div>
+          </div>
+
+          <!-- Column 2: In Progress -->
+          <div class="kanban-col" data-status="in_progress">
+            <div class="kanban-col-header">
+              <div class="col-title-group">
+                <span class="col-dot dot-progress"></span>
+                <span class="col-title">IN PROGRESS</span>
+                <span class="col-counter" id="countProgress">0</span>
+              </div>
+              <button class="col-quick-add" onclick="openCreateModalWithStatus('in_progress')" title="Add task to In Progress">＋</button>
+            </div>
+            <div class="kanban-dropzone" id="dropzoneProgress" data-status="in_progress"></div>
+          </div>
+
+          <!-- Column 3: Review / QA -->
+          <div class="kanban-col" data-status="review">
+            <div class="kanban-col-header">
+              <div class="col-title-group">
+                <span class="col-dot dot-review"></span>
+                <span class="col-title">IN REVIEW</span>
+                <span class="col-counter" id="countReview">0</span>
+              </div>
+              <button class="col-quick-add" onclick="openCreateModalWithStatus('review')" title="Add task to In Review">＋</button>
+            </div>
+            <div class="kanban-dropzone" id="dropzoneReview" data-status="review"></div>
+          </div>
+
+          <!-- Column 4: Completed -->
+          <div class="kanban-col" data-status="completed">
+            <div class="kanban-col-header">
+              <div class="col-title-group">
+                <span class="col-dot dot-completed"></span>
+                <span class="col-title">DONE</span>
+                <span class="col-counter" id="countCompleted">0</span>
+              </div>
+              <button class="col-quick-add" onclick="openCreateModalWithStatus('completed')" title="Add task to Done">＋</button>
+            </div>
+            <div class="kanban-dropzone" id="dropzoneCompleted" data-status="completed"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: TRADITIONAL LIST VIEW -->
+      <section id="listView" class="view-panel" style="display: none;">
+        <div id="taskList" class="task-list-grid"></div>
+      </section>
+
+      <!-- VIEW 3: INTERACTIVE ANALYTICS & CHARTS -->
+      <section id="analyticsView" class="view-panel" style="display: none;">
+        <div class="analytics-dashboard">
+          <div class="chart-card glass-panel wide-card">
+            <div class="chart-header">
+              <div>
+                <h3>Task Completion & Velocity Trend</h3>
+                <p class="chart-sub">Daily created vs completed tasks over time</p>
+              </div>
+              <div class="chart-actions">
+                <span class="chart-badge">LIVE TELEMETRY</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="velocityChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card glass-panel">
+            <div class="chart-header">
+              <div>
+                <h3>Status Distribution</h3>
+                <p class="chart-sub">Tasks divided by workflow stage</p>
+              </div>
+            </div>
+            <div class="chart-container-donut">
+              <canvas id="statusChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card glass-panel">
+            <div class="chart-header">
+              <div>
+                <h3>Category Performance</h3>
+                <p class="chart-sub">Total vs completed across categories</p>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card glass-panel">
+            <div class="chart-header">
+              <div>
+                <h3>Priority Matrix</h3>
+                <p class="chart-sub">Workload distribution by urgency</p>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="priorityChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Activity Summary Feed -->
+          <div class="chart-card glass-panel wide-card">
+            <div class="chart-header">
+              <div>
+                <h3>Recent Activity & Audit Log</h3>
+                <p class="chart-sub">Chronological audit stream of project modifications</p>
+              </div>
+            </div>
+            <div id="activityFeedList" class="activity-feed-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: INTERACTIVE CALENDAR VIEW -->
+      <section id="calendarView" class="view-panel" style="display: none;">
+        <div class="calendar-wrapper glass-panel">
+          <div class="calendar-toolbar">
+            <div class="cal-nav-group">
+              <button id="calPrevBtn" class="btn btn-secondary">◀ Prev</button>
+              <button id="calTodayBtn" class="btn btn-secondary">Today</button>
+              <button id="calNextBtn" class="btn btn-secondary">Next ▶</button>
+            </div>
+            <h2 id="calendarMonthTitle" class="calendar-title">November 2026</h2>
+            <div class="cal-legend">
+              <span class="legend-chip chip-critical">● Critical</span>
+              <span class="legend-chip chip-high">● High</span>
+              <span class="legend-chip chip-medium">● Medium</span>
+              <span class="legend-chip chip-low">● Low</span>
+            </div>
+          </div>
+          <div class="calendar-grid-header">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          </div>
+          <div id="calendarDaysGrid" class="calendar-days-grid"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 5: TIMELINE / GANTT VIEW -->
+      <section id="timelineView" class="view-panel" style="display: none;">
+        <div class="timeline-wrapper glass-panel">
+          <div class="timeline-header">
+            <h3>Project Execution Timeline</h3>
+            <p class="timeline-sub">Linear progress and scheduled deadlines across all active streams</p>
+          </div>
+          <div id="timelineContainer" class="timeline-container"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 6: WORKFLOW FLOWCHART & DEPENDENCIES -->
+      <section id="workflowView" class="view-panel" style="display: none;">
+        <div class="workflow-wrapper glass-panel">
+          <div class="workflow-header">
+            <div>
+              <h3>Interactive Workflow & Dependency Flowchart</h3>
+              <p class="workflow-sub">Interactive visual graph mapping task dependencies and pipeline flow</p>
+            </div>
+            <div class="workflow-legend">
+              <span class="wf-legend-item"><span class="wf-dot todo"></span> To Do</span>
+              <span class="wf-legend-item"><span class="wf-dot progress"></span> In Progress</span>
+              <span class="wf-legend-item"><span class="wf-dot review"></span> Review</span>
+              <span class="wf-legend-item"><span class="wf-dot completed"></span> Done</span>
+            </div>
+          </div>
+          <div class="workflow-canvas-container" id="workflowCanvasContainer">
+            <svg id="workflowSvg" class="workflow-svg"></svg>
+            <div id="workflowNodes" class="workflow-nodes"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 7: ARCHIVED TASKS VIEW -->
+      <section id="archivedView" class="view-panel" style="display: none;">
+        <div class="archived-wrapper glass-panel">
+          <div class="archived-header">
+            <div>
+              <h3>Archived Tasks</h3>
+              <p class="archived-sub">Items stored in cold archival storage. You can restore them anytime.</p>
+            </div>
+            <button id="restoreAllBtn" class="btn btn-secondary" style="display: none;">Restore All</button>
+          </div>
+          <div id="archivedList" class="task-list-grid"></div>
+        </div>
+      </section>
+
+      <!-- Global Empty State -->
+      <div id="emptyState" class="empty-state glass-panel" style="display: none;">
+        <div class="empty-icon-ring">⚡</div>
+        <h3 id="emptyStateTitle">No tasks detected</h3>
+        <p id="emptyStateMsg">You don't have any tasks matching your filters. Create one to begin!</p>
+        <button class="btn btn-cyber-primary" onclick="openCreateModal()">＋ Create First Task</button>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="cyber-footer">
+      <div class="footer-left">
+        <span>TASKFLOW PROTOCOL v2.5</span> • <span>NODE.JS & EXPRESS</span> • <span>RESILIENT PERSISTENCE</span>
+      </div>
+      <div class="footer-right">
+        <span>Press <kbd>Ctrl</kbd> + <kbd>K</kbd> for Command Palette</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Task Modal (Create & Edit) -->
+  <div id="taskModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card glass-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-pill-icon">⚡</span>
+          <h2 id="modalTitle">Create New Task</h2>
+        </div>
+        <button id="closeModalBtn" class="close-btn" title="Close (Esc)">&times;</button>
+      </div>
+      <form id="taskForm">
+        <input type="hidden" id="taskId">
+        
+        <div class="form-group">
+          <label for="taskTitle">Task Title <span class="required">*</span></label>
+          <input type="text" id="taskTitle" required placeholder="e.g., Deploy Neural Microservice Cluster" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="taskDescription">Description / Specifications</label>
+          <textarea id="taskDescription" rows="3" placeholder="Add detailed requirements, architectural notes, or links..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskStatus">Workflow Status</label>
+            <select id="taskStatus">
+              <option value="todo">To Do</option>
+              <option value="in_progress">In Progress</option>
+              <option value="review">In Review</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="taskPriority">Priority Level</label>
+            <select id="taskPriority">
+              <option value="Critical">🔴 Critical</option>
+              <option value="High">🟠 High</option>
+              <option value="Medium" selected>🟡 Medium</option>
+              <option value="Low">🟢 Low</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="taskCategory">Category</label>
+            <input type="text" id="taskCategory" placeholder="Engineering, Design..." list="categorySuggestions">
+            <datalist id="categorySuggestions">
+              <option value="Engineering">
+              <option value="Design">
+              <option value="Research">
+              <option value="Security">
+              <option value="Operations">
+              <option value="Personal">
+            </datalist>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskDueDate">Target Deadline</label>
+            <input type="date" id="taskDueDate">
+          </div>
+
+          <div class="form-group">
+            <label for="taskRecurring">Recurring Cadence</label>
+            <select id="taskRecurring">
+              <option value="none">None (One-time)</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="taskTagsInput">Tags (comma-separated)</label>
+            <input type="text" id="taskTagsInput" placeholder="api, frontend, security">
+          </div>
+        </div>
+
+        <!-- Subtasks Checklist Manager -->
+        <div class="form-group subtasks-form-section">
+          <div class="subtask-header-row">
+            <label>Subtask Checklist & Progress</label>
+            <span id="subtaskProgressIndicator" class="subtask-progress-text">0 / 0 Done (0%)</span>
+          </div>
+          <div id="modalSubtaskList" class="modal-subtask-list"></div>
+          <div class="add-subtask-row">
+            <input type="text" id="newSubtaskTitle" placeholder="Add checklist item..." autocomplete="off">
+            <button type="button" id="addSubtaskBtn" class="btn btn-secondary btn-sm">Add Item</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="cancelModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="saveTaskBtn" class="btn btn-cyber-primary">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Global Command Palette Modal (Ctrl + K) -->
+  <div id="commandPaletteModal" class="modal-backdrop" style="display: none;">
+    <div class="command-palette-card glass-modal">
+      <div class="palette-search-row">
+        <span class="palette-search-icon">⚡</span>
+        <input type="text" id="paletteInput" placeholder="Type a command or search tasks..." autocomplete="off">
+        <span class="palette-esc-badge">ESC</span>
+      </div>
+      <div class="palette-body" id="paletteResults">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Futuristic Confirmation Dialog Modal -->
+  <div id="confirmModal" class="modal-backdrop" style="display: none;">
+    <div class="confirm-dialog-card glass-modal">
+      <div class="confirm-icon-box">⚠️</div>
+      <h3 id="confirmDialogTitle">Confirm Action</h3>
+      <p id="confirmDialogMessage">Are you sure you want to proceed?</p>
+      <div class="confirm-actions">
+        <button id="confirmCancelBtn" class="btn btn-secondary">Cancel</button>
+        <button id="confirmProceedBtn" class="btn btn-danger">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    // Self-healing cache cleanup: purge stale v1 Service Worker caches
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (let name of names) {
+          if (name !== 'taskflow-v2.5') {
+            caches.delete(name);
+          }
+        }
+      });
+    }
+  </script>
+  <script src="js/app.js?v=2.5"></script>
+</body>
+</html>

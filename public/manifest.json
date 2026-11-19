@@ -1,0 +1,16 @@
+{
+  "name": "TaskFlow - Daily Work Tracker",
+  "short_name": "TaskFlow",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#4f46e5",
+  "description": "Daily productivity, tasks, and work history tracker",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
