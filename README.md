@@ -1,7 +1,7 @@
 # ⚡ TASKFLOW PROTOCOL // v2.5 PRO
 > An enterprise-grade, high-performance Task & Project Orchestration Platform built with **Node.js** and **Express**. Engineered with a dark obsidian & vibrant crimson design language, multi-view execution matrix (Kanban, List, Analytics, Calendar, Timeline, Workflow Flowchart), and instant keyboard-driven command palette.
 
-[![Live Demo](https://img.shields.io/badge/Demo-Live%20on%20Vercel-ff1a40?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20on%20Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://taskflow-qgg3.onrender.com)
 [![Node.js](https://img.shields.io/badge/Node.js-v20%2B-10b981?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-v4.21-06b6d4?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![Tests](https://img.shields.io/badge/Tests-10%2F10%20Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white)]()
@@ -11,8 +11,8 @@
 
 ## 🌐 Live Deployment & Resume Links
 
-- **Live Production URL:** [https://taskflow-protocol.vercel.app](https://taskflow-protocol.vercel.app) *(Deploy link instructions below)*
-- **GitHub Repository:** `https://github.com/rafiulshafin/taskflow-protocol`
+- **Live Production URL:** [https://taskflow-qgg3.onrender.com](https://taskflow-qgg3.onrender.com)
+- **GitHub Repository:** [https://github.com/rafiulshafin/mini-project](https://github.com/rafiulshafin/mini-project)
 - **Target Role Portfolio Item:** Full-Stack Node.js Developer / Systems Engineer
 
 ---
@@ -138,15 +138,15 @@ sequenceDiagram
     participant CLI as Terminal / VS Code
     participant Git as Git Version Control
     participant GitHub as Remote GitHub Repo
-    participant Vercel as Vercel CI/CD Engine
+    participant Render as Render CI/CD Engine
     participant Prod as Live Production Web App
 
     Dev->>CLI: Develop features & run 'npm test'
     CLI->>Git: git add . && git commit -m "feat: upgrade TaskFlow"
     Git->>GitHub: git push origin main
-    GitHub->>Vercel: Webhook Trigger (Deployment Event)
-    Vercel->>Vercel: Build Serverless Function (api/index.js) & Bundle Static Assets
-    Vercel->>Prod: Deploy to https://taskflow-protocol.vercel.app
+    GitHub->>Render: Webhook Trigger (Auto-Deploy Event)
+    Render->>Render: Build Container & Start Node Engine ('npm start')
+    Render->>Prod: Deploy to https://taskflow-qgg3.onrender.com
     Prod-->>Dev: Live verification & Resume Link ready
 ```
 
@@ -197,10 +197,10 @@ sequenceDiagram
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/rafiulshafin/taskflow-protocol.git
+git clone https://github.com/rafiulshafin/mini-project.git
 
 # 2. Navigate to project root
-cd taskflow-protocol
+cd mini-project
 
 # 3. Install dependencies
 npm install
@@ -233,20 +233,22 @@ To run TaskFlow as a standalone desktop application (no browser address bar, exa
 
 ---
 
-## ☁️ Deploying to Vercel (Resume Ready)
+## ☁️ Cloud Deployment (Live on Render)
 
-### Option 1: Via Vercel Dashboard (Easiest)
-1. Push your repository to GitHub (instructions below).
+### Live Production Deployment (Render)
+The application is live and hosted continuously on **Render**:
+- **Production URL:** [https://taskflow-qgg3.onrender.com](https://taskflow-qgg3.onrender.com)
+- **Runtime:** Node.js v20+
+- **Build Command:** `npm install`
+- **Start Command:** `npm start`
+- **Continuous Deployment:** Synchronized automatically on every push to the `main` branch.
+
+### Alternate Option: Deploying to Vercel
+1. Push your repository to GitHub (`rafiulshafin/mini-project`).
 2. Go to **[vercel.com](https://vercel.com)** and sign in with GitHub.
-3. Click **"Add New Project"** ➔ Select **`taskflow-protocol`**.
-4. Leave root directory as `./` and click **"Deploy"**.
-5. Vercel will build and assign you a live HTTPS link (e.g. `https://taskflow-protocol.vercel.app`) to put on your resume!
-
-### Option 2: Via Vercel CLI
-```bash
-npx vercel
-```
-Follow the prompts to link and deploy in under 60 seconds.
+3. Switch to your **Personal (Hobby)** account (from the top-left workspace menu).
+4. Click **"Add New Project"** ➔ Select `mini-project`.
+5. Set Framework Preset to **Other**, leave Build & Output blank, and click **"Deploy"**.
 
 ---
 
