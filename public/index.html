@@ -60,6 +60,21 @@
         <div class="hud-actions">
           <div class="live-clock" id="liveClock">00:00:00 UTC</div>
 
+          <!-- Pomodoro Focus Timer Toggle -->
+          <button id="pomodoroToggleBtn" class="hud-icon-btn" title="Open Focus / Pomodoro Timer">
+            <span>⏱️</span>
+          </button>
+
+          <!-- AI Executive Sprint Briefing -->
+          <button id="aiSummaryBtn" class="hud-icon-btn hud-ai-btn" title="✨ AI Sprint Executive Briefing">
+            <span>✨ AI</span>
+          </button>
+
+          <!-- Sound FX Toggle -->
+          <button id="soundToggle" class="hud-icon-btn" title="Toggle Sound Effects">
+            <span id="soundIcon">🔊</span>
+          </button>
+
           <!-- Notification Bell -->
           <div class="notif-wrapper">
             <button id="notifBellBtn" class="hud-icon-btn" title="System Notifications">
@@ -82,14 +97,25 @@
             <span id="themeIcon">☀️</span>
           </button>
 
-          <!-- Export & Import Backup -->
+          <!-- Export & Import & Print -->
           <button id="exportBtn" class="hud-icon-btn" title="Export JSON Database">
             <span>⬇</span>
+          </button>
+          <button id="exportCsvBtn" class="hud-icon-btn" title="Export CSV Spreadsheet">
+            <span>📊</span>
+          </button>
+          <button id="printBtn" class="hud-icon-btn" title="Print / PDF View">
+            <span>🖨️</span>
           </button>
           <label for="importFile" class="hud-icon-btn" title="Restore JSON Database">
             <span>⬆</span>
             <input type="file" id="importFile" accept=".json" style="display:none;">
           </label>
+
+          <!-- AI Settings -->
+          <button id="aiSettingsBtn" class="hud-icon-btn" title="AI Configuration & API Key">
+            <span>⚙️</span>
+          </button>
 
           <!-- Primary New Task Button -->
           <button id="openNewTaskModal" class="btn btn-cyber-primary">
@@ -521,7 +547,10 @@
         <input type="hidden" id="taskId">
         
         <div class="form-group">
-          <label for="taskTitle">Task Title <span class="required">*</span></label>
+          <div class="form-label-with-ai">
+            <label for="taskTitle">Task Title <span class="required">*</span></label>
+            <button type="button" id="aiPolishBtn" class="btn-ai-inline" title="✨ AI Polish Title, Description & Suggest Tags">✨ AI Polish</button>
+          </div>
           <input type="text" id="taskTitle" required placeholder="e.g., Deploy Neural Microservice Cluster" autocomplete="off">
         </div>
 
@@ -587,11 +616,21 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="taskPinned">
+            <span>📌 <strong>Pin Task:</strong> Keep locked to top of Kanban and List views</span>
+          </label>
+        </div>
+
         <!-- Subtasks Checklist Manager -->
         <div class="form-group subtasks-form-section">
           <div class="subtask-header-row">
             <label>Subtask Checklist & Progress</label>
-            <span id="subtaskProgressIndicator" class="subtask-progress-text">0 / 0 Done (0%)</span>
+            <div class="subtask-header-actions">
+              <button type="button" id="aiBreakdownBtn" class="btn-ai-inline" title="✨ AI Generate Subtasks">✨ AI Breakdown</button>
+              <span id="subtaskProgressIndicator" class="subtask-progress-text">0 / 0 Done (0%)</span>
+            </div>
           </div>
           <div id="modalSubtaskList" class="modal-subtask-list"></div>
           <div class="add-subtask-row">
@@ -631,6 +670,91 @@
       <div class="confirm-actions">
         <button id="confirmCancelBtn" class="btn btn-secondary">Cancel</button>
         <button id="confirmProceedBtn" class="btn btn-danger">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Pomodoro Focus Timer Widget -->
+  <div id="pomodoroWidget" class="pomodoro-widget glass-panel" style="display: none;">
+    <div class="pomodoro-header">
+      <div class="pomodoro-title-group">
+        <span class="pomodoro-pulse-icon">⏱️</span>
+        <span class="pomodoro-title">Focus Protocol</span>
+      </div>
+      <div class="pomodoro-header-actions">
+        <button id="pomodoroMinimizeBtn" class="hud-icon-btn-sm" title="Minimize">_</button>
+        <button id="pomodoroCloseBtn" class="hud-icon-btn-sm" title="Close">&times;</button>
+      </div>
+    </div>
+    <div class="pomodoro-body" id="pomodoroBody">
+      <div id="pomodoroTaskLabel" class="pomodoro-task-label">General Sprint Focus</div>
+      <div class="pomodoro-modes">
+        <button class="pomo-mode-btn active" data-mode="focus" data-minutes="25">Focus (25m)</button>
+        <button class="pomo-mode-btn" data-mode="shortBreak" data-minutes="5">Break (5m)</button>
+        <button class="pomo-mode-btn" data-mode="longBreak" data-minutes="15">Rest (15m)</button>
+      </div>
+      <div class="pomodoro-timer-display" id="pomodoroTimerDisplay">25:00</div>
+      <div class="pomodoro-progress-track">
+        <div id="pomodoroProgressFill" class="pomodoro-progress-fill" style="width: 0%;"></div>
+      </div>
+      <div class="pomodoro-controls">
+        <button id="pomodoroStartBtn" class="btn btn-cyber-primary btn-sm">▶ Start</button>
+        <button id="pomodoroPauseBtn" class="btn btn-secondary btn-sm" style="display: none;">⏸ Pause</button>
+        <button id="pomodoroResetBtn" class="btn btn-secondary btn-sm">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Executive Briefing Modal -->
+  <div id="aiSummaryModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card glass-modal ai-summary-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-pill-icon">✨</span>
+          <h2>AI Executive Sprint Briefing</h2>
+        </div>
+        <button id="closeAiSummaryBtn" class="close-btn" title="Close">&times;</button>
+      </div>
+      <div class="ai-summary-body" id="aiSummaryContent">
+        <div class="ai-loading-state">
+          <div class="ai-spinner"></div>
+          <p>Analyzing telemetry, sprint velocity, and critical blockers...</p>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="refreshAiSummaryBtn" class="btn btn-secondary">↻ Regenerate</button>
+        <button id="closeAiSummaryBtn2" class="btn btn-cyber-primary">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Settings Modal -->
+  <div id="aiSettingsModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card glass-modal">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-pill-icon">⚙️</span>
+          <h2>AI Intelligence Settings</h2>
+        </div>
+        <button id="closeAiSettingsBtn" class="close-btn" title="Close">&times;</button>
+      </div>
+      <div class="modal-body-padded">
+        <p class="settings-desc">TaskFlow integrates <strong>Google Gemini API</strong> for intelligent subtask generation, task polishing, and executive standup summaries. A neural rule-based fallback engine is active automatically when an API key is not provided.</p>
+        
+        <div class="form-group">
+          <label for="geminiApiKeyInput">Gemini API Key (Optional)</label>
+          <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy... (Leave empty to use server default or neural engine)">
+          <small class="form-hint">Stored strictly in your local browser storage. Free keys are available from <a href="https://aistudio.google.com" target="_blank" rel="noopener" style="color: var(--crimson);">Google AI Studio</a>.</small>
+        </div>
+
+        <div class="settings-status-box">
+          <div class="status-indicator-dot online"></div>
+          <span>Active Engines: <strong>Gemini 1.5/2.0 Flash + Neural Fallback Engine</strong></span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="clearAiKeyBtn" class="btn btn-secondary">Clear Key</button>
+        <button id="saveAiSettingsBtn" class="btn btn-cyber-primary">Save Key</button>
       </div>
     </div>
   </div>

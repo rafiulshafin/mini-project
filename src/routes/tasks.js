@@ -38,6 +38,64 @@ taskRouter.get('/export', async (req, res, next) => {
   }
 });
 
+// GET /api/tasks/export/csv - Export all tasks as downloadable CSV
+taskRouter.get('/export/csv', async (req, res, next) => {
+  try {
+    const tasks = await taskStorage.getAll({ includeArchived: true });
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const headers = [
+      'ID',
+      'Title',
+      'Description',
+      'Category',
+      'Priority',
+      'Status',
+      'Progress',
+      'Pinned',
+      'Due Date',
+      'Tags',
+      'Subtasks Count',
+      'Subtasks Done',
+      'Created At',
+      'Updated At'
+    ].map(h => `"${h}"`);
+
+    const rows = tasks.map(t => {
+      const subtasks = Array.isArray(t.subtasks) ? t.subtasks : [];
+      const doneCount = subtasks.filter(s => s.completed).length;
+      return [
+        escapeCsv(t.id),
+        escapeCsv(t.title),
+        escapeCsv(t.description),
+        escapeCsv(t.category),
+        escapeCsv(t.priority),
+        escapeCsv(t.status),
+        escapeCsv(`${t.progress || 0}%`),
+        escapeCsv(t.pinned ? 'Yes' : 'No'),
+        escapeCsv(t.dueDate || 'None'),
+        escapeCsv(Array.isArray(t.tags) ? t.tags.join(', ') : ''),
+        escapeCsv(subtasks.length),
+        escapeCsv(doneCount),
+        escapeCsv(t.createdAt),
+        escapeCsv(t.updatedAt)
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    const filename = `taskflow-export-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(csvContent);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/tasks/import - Import/restore tasks from JSON
 taskRouter.post('/import', async (req, res, next) => {
   try {
@@ -86,7 +144,8 @@ taskRouter.post('/', async (req, res, next) => {
       subtasks,
       recurring,
       dependencies,
-      progress
+      progress,
+      pinned
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -107,7 +166,8 @@ taskRouter.post('/', async (req, res, next) => {
       subtasks,
       recurring,
       dependencies,
-      progress
+      progress,
+      pinned
     });
 
     res.status(201).json({
@@ -136,6 +196,7 @@ taskRouter.put('/:id', async (req, res, next) => {
       recurring,
       dependencies,
       progress,
+      pinned,
       archived
     } = req.body;
 
@@ -152,6 +213,7 @@ taskRouter.put('/:id', async (req, res, next) => {
       ...(recurring !== undefined && { recurring }),
       ...(dependencies !== undefined && { dependencies }),
       ...(progress !== undefined && { progress }),
+      ...(pinned !== undefined && { pinned: Boolean(pinned) }),
       ...(archived !== undefined && { archived: Boolean(archived) })
     });
 
@@ -214,6 +276,23 @@ taskRouter.patch('/:id/toggle', async (req, res, next) => {
       success: true,
       data: task,
       message: `Task marked as ${task.completed ? 'completed' : 'active'}`
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/tasks/:id/pin - Toggle pin status
+taskRouter.patch('/:id/pin', async (req, res, next) => {
+  try {
+    const task = await taskStorage.togglePin(req.params.id);
+    if (!task) {
+      return res.status(404).json({ success: false, error: 'Task not found' });
+    }
+    res.json({
+      success: true,
+      data: task,
+      message: `Task ${task.pinned ? 'pinned to top' : 'unpinned'} successfully`
     });
   } catch (err) {
     next(err);

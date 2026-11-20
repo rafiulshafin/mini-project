@@ -4,7 +4,7 @@
 [![Live Demo](https://img.shields.io/badge/Demo-Live%20on%20Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://taskflow-qgg3.onrender.com)
 [![Node.js](https://img.shields.io/badge/Node.js-v20%2B-10b981?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-v4.21-06b6d4?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
-[![Tests](https://img.shields.io/badge/Tests-10%2F10%20Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white)]()
+[![Tests](https://img.shields.io/badge/Tests-15%2F15%20Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white)]()
 [![License](https://img.shields.io/badge/License-MIT-a855f7?style=for-the-badge)](LICENSE)
 
 ---
@@ -173,16 +173,30 @@ sequenceDiagram
 - **🕸️ Workflow Flowchart:** Interactive node graph visually connecting pipeline stages and task dependencies.
 - **🗄️ Archived Tasks View:** Cold archival storage with 1-click restoration.
 
-### 3. 🎯 Advanced Task Management
+### 3. 🎯 Advanced Task Management & Pinning
+- **📌 Pinned / Starred Tasks:** 1-click pin to lock critical priorities to the top of Kanban columns and List view with amber-obsidian glow.
 - **Priorities:** `Critical` (🔴 neon glow), `High` (🟠), `Medium` (🟡), `Low` (🟢).
 - **Subtasks & Progress Tracking:** Interactive checklist on cards and in the modal. Parent task progress (0%–100%) auto-calculates from completed subtasks.
-- **Tags & Categories:** Support for multiple tags (`#api`, `#frontend`, `#security`) with instant filtering.
+- **🎨 Dynamic Neon Tag Matrix:** Deterministic color-coded tag pills for high-visibility visual categorization.
 - **Recurring Tasks:** Native support for `Daily`, `Weekly`, `Monthly`, or `None`.
 - **Duplicate & Archive:** 1-click task cloning and soft archival.
 
-### 4. ⚡ Global Command Palette (`Ctrl + K` / `⌘K`)
+### 4. 🤖 AI Intelligence Suite (LLM Integration)
+- **✨ AI Subtask Breakdown:** Generates 4–6 actionable, estimated subtasks from any task title and requirements.
+- **🪄 AI Smart Polish:** Auto-structures titles, generates professional Markdown descriptions, detects urgency, and suggests relevant tags.
+- **📊 AI Executive Sprint Briefing:** Generates an executive standup briefing analyzing sprint velocity, critical blockers, and actionable recommendations.
+- **⚙️ Dual-Engine Resilience:** Integrates **Google Gemini 1.5/2.0 Flash API** with an intelligent built-in neural fallback engine so AI features always function seamlessly.
+
+### 5. ⏱️ Focus Protocol (Integrated Pomodoro Timer)
+- **Multi-Cadence Timer:** 25m Focus / 5m Break / 15m Rest intervals with live progress bar and countdown display.
+- **Active Task Binding:** Click the `⏱️` button on any task card to bind the timer directly to that task.
+- **🔔 Procedural Web Audio Alerts:** Synthesizes custom sci-fi chimes for task completions, creations, and timer completions using pure Web Audio API (zero audio file downloads, zero latency).
+
+### 6. ⚡ Global Command Palette (`Ctrl + K` / `⌘K`) & Data Portability
 - Instant fuzzy search across tasks, tags, and notes.
-- Quick command actions: Switch viewports, create new tasks, toggle dark/light theme, export JSON backups.
+- Quick command actions: Switch viewports, trigger AI sprint briefing, launch Pomodoro timer, toggle sound effects, export CSV/JSON backups, and trigger print/PDF layout.
+- **📊 CSV & JSON Export:** Full database backup download in JSON or spreadsheet-ready CSV format.
+- **🖨️ PDF & Print Engine:** Custom `@media print` stylesheets optimized for clean, professional paper and PDF export.
 
 ---
 
@@ -262,6 +276,7 @@ The application is live and hosted continuously on **Render**:
 | `POST` | `/api/tasks` | Create task (`title`, `description`, `category`, `priority`, `dueDate`, `tags`, `subtasks`, `recurring`) |
 | `PUT` | `/api/tasks/:id` | Update full task specifications |
 | `PATCH` | `/api/tasks/:id/toggle` | Fast completion toggle |
+| `PATCH` | `/api/tasks/:id/pin` | Toggle pinned-to-top status |
 | `POST` | `/api/tasks/:id/duplicate` | Clone task into a new instance |
 | `PATCH` | `/api/tasks/:id/archive` | Toggle archival status |
 | `POST` | `/api/tasks/:id/subtasks` | Add subtask checklist item |
@@ -269,8 +284,12 @@ The application is live and hosted continuously on **Render**:
 | `DELETE` | `/api/tasks/:id/subtasks/:subtaskId` | Delete subtask item |
 | `DELETE` | `/api/tasks/:id` | Delete task permanently |
 | `GET` | `/api/tasks/export` | Download full database backup as JSON |
+| `GET` | `/api/tasks/export/csv` | Download full database export as RFC 4180 CSV spreadsheet |
 | `POST` | `/api/tasks/import` | Restore database backup |
 | `GET` | `/api/stats` | Productivity telemetry, 7-day velocity, category breakdown, notifications |
+| `POST` | `/api/ai/breakdown` | ✨ AI subtask decomposition (Gemini API / Neural Engine) |
+| `POST` | `/api/ai/polish` | ✨ AI task title, description & tag enhancement |
+| `POST` | `/api/ai/summary` | ✨ AI executive sprint briefing & velocity analysis |
 
 ---
 

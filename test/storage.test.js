@@ -29,6 +29,13 @@ test('TaskStorage operations', async (t) => {
     const toggled = await taskStorage.toggle(created.id);
     assert.equal(toggled.completed, true);
 
+    // Toggle Pin
+    const pinned = await taskStorage.togglePin(created.id);
+    assert.equal(pinned.pinned, true);
+
+    const unpinned = await taskStorage.togglePin(created.id);
+    assert.equal(unpinned.pinned, false);
+
     // Delete
     const deleted = await taskStorage.delete(created.id);
     assert.equal(deleted, true);

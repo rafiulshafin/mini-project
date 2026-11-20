@@ -30,6 +30,270 @@ const state = {
   paletteSelectedIndex: 0
 };
 
+// ==========================================================================
+// DYNAMIC TAGS, AUDIO ENGINE, POMODORO & AI ENGINE
+// ==========================================================================
+
+function getTagColorClass(tag) {
+  if (!tag) return 'badge-tag-neon-0';
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) {
+    hash = (hash << 5) - hash + tag.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % 6;
+  return `badge-tag-neon-${index}`;
+}
+
+const AudioEngine = {
+  ctx: null,
+  enabled: localStorage.getItem('taskflow_sound') !== 'false',
+
+  init() {
+    if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioCtx();
+    }
+  },
+
+  toggle() {
+    this.enabled = !this.enabled;
+    localStorage.setItem('taskflow_sound', this.enabled ? 'true' : 'false');
+    const soundIcon = document.getElementById('soundIcon');
+    if (soundIcon) soundIcon.textContent = this.enabled ? '🔊' : '🔇';
+    showToast(this.enabled ? 'Audio effects enabled' : 'Audio effects muted', 'info');
+    if (this.enabled) this.playTone(523.25, 0.08, 'sine');
+  },
+
+  playTone(freq, duration = 0.12, type = 'sine') {
+    if (!this.enabled) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    } catch (e) {
+      // Audio not permitted or supported
+    }
+  },
+
+  playComplete() {
+    if (!this.enabled) return;
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => this.playTone(freq, 0.18, 'triangle'), idx * 70);
+    });
+  },
+
+  playCreate() {
+    if (!this.enabled) return;
+    this.playTone(587.33, 0.08, 'sine');
+    setTimeout(() => this.playTone(880.00, 0.12, 'sine'), 60);
+  },
+
+  playPin() {
+    if (!this.enabled) return;
+    this.playTone(783.99, 0.16, 'triangle');
+  },
+
+  playTimerEnd() {
+    if (!this.enabled) return;
+    [440, 659.25, 880].forEach((freq) => this.playTone(freq, 0.6, 'sine'));
+  }
+};
+
+const PomodoroEngine = {
+  widget: null,
+  display: null,
+  progressFill: null,
+  taskLabel: null,
+  timerId: null,
+  totalSeconds: 25 * 60,
+  remainingSeconds: 25 * 60,
+  isRunning: false,
+  activeTaskTitle: 'General Sprint Focus',
+  currentMode: 'focus',
+
+  init() {
+    this.widget = document.getElementById('pomodoroWidget');
+    this.display = document.getElementById('pomodoroTimerDisplay');
+    this.progressFill = document.getElementById('pomodoroProgressFill');
+    this.taskLabel = document.getElementById('pomodoroTaskLabel');
+
+    const toggleBtn = document.getElementById('pomodoroToggleBtn');
+    const startBtn = document.getElementById('pomodoroStartBtn');
+    const pauseBtn = document.getElementById('pomodoroPauseBtn');
+    const resetBtn = document.getElementById('pomodoroResetBtn');
+    const closeBtn = document.getElementById('pomodoroCloseBtn');
+    const minimizeBtn = document.getElementById('pomodoroMinimizeBtn');
+
+    if (toggleBtn) toggleBtn.addEventListener('click', () => this.toggleWidget());
+    if (closeBtn) closeBtn.addEventListener('click', () => this.hideWidget());
+    if (minimizeBtn) minimizeBtn.addEventListener('click', () => {
+      const body = document.getElementById('pomodoroBody');
+      if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    });
+
+    if (startBtn) startBtn.addEventListener('click', () => this.start());
+    if (pauseBtn) pauseBtn.addEventListener('click', () => this.pause());
+    if (resetBtn) resetBtn.addEventListener('click', () => this.reset());
+
+    document.querySelectorAll('.pomo-mode-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.pomo-mode-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        const minutes = parseInt(e.target.dataset.minutes, 10) || 25;
+        this.setMode(e.target.dataset.mode, minutes);
+      });
+    });
+
+    this.updateDisplay();
+  },
+
+  setMode(mode, minutes) {
+    this.pause();
+    this.currentMode = mode;
+    this.totalSeconds = minutes * 60;
+    this.remainingSeconds = this.totalSeconds;
+    this.updateDisplay();
+  },
+
+  toggleWidget() {
+    if (!this.widget) return;
+    this.widget.style.display = this.widget.style.display === 'none' ? 'block' : 'none';
+  },
+
+  hideWidget() {
+    if (this.widget) this.widget.style.display = 'none';
+  },
+
+  showWidget() {
+    if (this.widget) this.widget.style.display = 'block';
+  },
+
+  bindTask(taskTitle) {
+    this.activeTaskTitle = taskTitle;
+    if (this.taskLabel) {
+      this.taskLabel.textContent = `Focusing on: ${taskTitle}`;
+    }
+    this.showWidget();
+    this.reset();
+    this.start();
+    showToast(`⏱️ Focus sprint started for "${taskTitle}"`, 'info');
+  },
+
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    const startBtn = document.getElementById('pomodoroStartBtn');
+    const pauseBtn = document.getElementById('pomodoroPauseBtn');
+    if (startBtn) startBtn.style.display = 'none';
+    if (pauseBtn) pauseBtn.style.display = 'inline-flex';
+
+    this.timerId = setInterval(() => {
+      if (this.remainingSeconds > 0) {
+        this.remainingSeconds--;
+        this.updateDisplay();
+      } else {
+        this.complete();
+      }
+    }, 1000);
+  },
+
+  pause() {
+    this.isRunning = false;
+    clearInterval(this.timerId);
+    this.timerId = null;
+    const startBtn = document.getElementById('pomodoroStartBtn');
+    const pauseBtn = document.getElementById('pomodoroPauseBtn');
+    if (startBtn) startBtn.style.display = 'inline-flex';
+    if (pauseBtn) pauseBtn.style.display = 'none';
+  },
+
+  reset() {
+    this.pause();
+    this.remainingSeconds = this.totalSeconds;
+    this.updateDisplay();
+  },
+
+  complete() {
+    this.pause();
+    AudioEngine.playTimerEnd();
+    showToast(`⏱️ ${this.currentMode === 'focus' ? 'Focus sprint completed!' : 'Break ended! Ready to focus?'}`, 'success');
+  },
+
+  updateDisplay() {
+    const mins = Math.floor(this.remainingSeconds / 60).toString().padStart(2, '0');
+    const secs = (this.remainingSeconds % 60).toString().padStart(2, '0');
+    if (this.display) {
+      this.display.textContent = `${mins}:${secs}`;
+    }
+    if (this.progressFill) {
+      const pct = ((this.totalSeconds - this.remainingSeconds) / this.totalSeconds) * 100;
+      this.progressFill.style.width = `${pct}%`;
+    }
+  }
+};
+
+const AIEngine = {
+  getApiKey() {
+    return localStorage.getItem('taskflow_gemini_key') || '';
+  },
+
+  setApiKey(key) {
+    if (key) {
+      localStorage.setItem('taskflow_gemini_key', key.trim());
+    } else {
+      localStorage.removeItem('taskflow_gemini_key');
+    }
+  },
+
+  async request(endpoint, body = {}) {
+    const headers = { 'Content-Type': 'application/json' };
+    const key = this.getApiKey();
+    if (key) headers['x-gemini-key'] = key;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `AI Request Failed (${res.status})`);
+    }
+
+    return await res.json();
+  },
+
+  async polish(title, description) {
+    return await this.request('/api/ai/polish', { title, description });
+  },
+
+  async breakdown(title, description) {
+    return await this.request('/api/ai/breakdown', { title, description });
+  },
+
+  async summary() {
+    return await this.request('/api/ai/summary', {});
+  }
+};
+
 // DOM References
 const viewPanels = {
   kanban: document.getElementById('kanbanView'),
@@ -510,7 +774,7 @@ function setupKanbanDropListeners() {
 // Reusable Task Card Element Builder
 function createTaskCardElement(task) {
   const card = document.createElement('div');
-  card.className = `task-card ${task.completed ? 'completed-card' : ''}`;
+  card.className = `task-card ${task.completed ? 'completed-card' : ''} ${task.pinned ? 'is-pinned' : ''}`;
   card.dataset.id = task.id;
   card.draggable = true;
 
@@ -537,10 +801,10 @@ function createTaskCardElement(task) {
     </span>`;
   }
 
-  // Tags Pills
+  // Tags Pills with dynamic colors
   const tagsHtml = (task.tags || [])
-    .slice(0, 3)
-    .map(t => `<span class="badge badge-tag">#${escapeHtml(t)}</span>`)
+    .slice(0, 4)
+    .map(t => `<span class="badge badge-tag ${getTagColorClass(t)}">#${escapeHtml(t)}</span>`)
     .join('');
 
   // Subtask Progress bar
@@ -567,7 +831,10 @@ function createTaskCardElement(task) {
         <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} title="Mark as ${task.completed ? 'active' : 'completed'}">
         <h3 class="task-title">${escapeHtml(task.title)}</h3>
       </div>
-      <button class="task-menu-btn edit-task-btn" title="Edit Task">✏️</button>
+      <div class="task-header-actions">
+        <button class="task-menu-btn pin-task-btn ${task.pinned ? 'is-active' : ''}" title="${task.pinned ? 'Unpin Task' : 'Pin Task to Top'}">📌</button>
+        <button class="task-menu-btn edit-task-btn" title="Edit Task">✏️</button>
+      </div>
     </div>
 
     ${task.description ? `<p class="task-desc">${escapeHtml(task.description)}</p>` : ''}
@@ -582,6 +849,7 @@ function createTaskCardElement(task) {
     </div>
 
     <div class="card-quick-actions">
+      <button class="action-icon-btn focus-timer-btn" title="Focus Timer (Pomodoro)">⏱️</button>
       <button class="action-icon-btn duplicate-btn" title="Duplicate Task">📋</button>
       <button class="action-icon-btn archive-btn" title="Archive Task">🗄️</button>
       <button class="action-icon-btn delete-btn" title="Delete Task">🗑️</button>
@@ -591,6 +859,18 @@ function createTaskCardElement(task) {
   // Attach card interaction listeners
   const checkbox = card.querySelector('.task-checkbox');
   checkbox.addEventListener('change', () => handleToggleTask(task.id));
+
+  const pinBtn = card.querySelector('.pin-task-btn');
+  pinBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleTogglePin(task.id);
+  });
+
+  const focusBtn = card.querySelector('.focus-timer-btn');
+  focusBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    PomodoroEngine.bindTask(task.title);
+  });
 
   const editBtn = card.querySelector('.edit-task-btn');
   editBtn.addEventListener('click', (e) => {
@@ -641,7 +921,7 @@ function renderListView() {
 
   state.tasks.forEach(task => {
     const item = document.createElement('div');
-    item.className = 'task-list-item';
+    item.className = `task-list-item ${task.pinned ? 'is-pinned' : ''}`;
 
     const isOverdue = !task.completed && task.dueDate && task.dueDate < todayStr;
     const priorityClass = `badge-priority-${(task.priority || 'medium').toLowerCase()}`;
@@ -665,18 +945,24 @@ function renderListView() {
       <div class="list-item-left">
         <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
         <div class="list-item-content">
-          <h3 class="task-title ${task.completed ? 'line-through text-muted' : ''}">${escapeHtml(task.title)}</h3>
+          <div class="list-title-row" style="display: flex; align-items: center; gap: 8px;">
+            <h3 class="task-title ${task.completed ? 'line-through text-muted' : ''}">${escapeHtml(task.title)}</h3>
+            ${task.pinned ? '<span class="pinned-badge">📌 Pinned</span>' : ''}
+          </div>
           ${task.description ? `<p class="task-desc">${escapeHtml(task.description)}</p>` : ''}
           <div class="task-meta-row">
             <span class="badge ${priorityClass}">● ${escapeHtml(task.priority)}</span>
             <span class="badge badge-category">${escapeHtml(task.category || 'General')}</span>
             ${task.dueDate ? `<span class="badge ${isOverdue ? 'badge-overdue' : 'badge-due'}">📅 ${task.dueDate}</span>` : ''}
             <span class="badge badge-category">${task.status ? task.status.replace('_', ' ').toUpperCase() : 'TODO'}</span>
+            ${(task.tags || []).map(t => `<span class="badge badge-tag ${getTagColorClass(t)}">#${escapeHtml(t)}</span>`).join('')}
           </div>
           ${subtasksHtml}
         </div>
       </div>
       <div class="list-item-right">
+        <button class="action-icon-btn pin-btn ${task.pinned ? 'is-active' : ''}" title="${task.pinned ? 'Unpin' : 'Pin to top'}">📌</button>
+        <button class="action-icon-btn focus-btn" title="Focus Timer">⏱️</button>
         <button class="action-icon-btn edit-btn" title="Edit">✏️</button>
         <button class="action-icon-btn dup-btn" title="Duplicate">📋</button>
         <button class="action-icon-btn arch-btn" title="Archive">🗄️</button>
@@ -686,6 +972,8 @@ function renderListView() {
 
     // Listeners
     item.querySelector('.task-checkbox').addEventListener('change', () => handleToggleTask(task.id));
+    item.querySelector('.pin-btn').addEventListener('click', () => handleTogglePin(task.id));
+    item.querySelector('.focus-btn').addEventListener('click', () => PomodoroEngine.bindTask(task.title));
     item.querySelector('.edit-btn').addEventListener('click', () => openEditModal(task));
     item.querySelector('.dup-btn').addEventListener('click', () => handleDuplicateTask(task.id));
     item.querySelector('.arch-btn').addEventListener('click', () => handleToggleArchive(task.id));
@@ -1100,7 +1388,23 @@ async function handleToggleTask(id) {
     const res = await fetch(`/api/tasks/${id}/toggle`, { method: 'PATCH' });
     if (!res.ok) throw new Error('Status toggle failed');
     const json = await res.json();
+    if (json.data && json.data.completed) {
+      AudioEngine.playComplete();
+    }
     showToast(json.message || 'Status updated', 'success');
+    await loadData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleTogglePin(id) {
+  try {
+    const res = await fetch(`/api/tasks/${id}/pin`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('Pin update failed');
+    const json = await res.json();
+    AudioEngine.playPin();
+    showToast(json.message || 'Pin status updated', 'info');
     await loadData();
   } catch (err) {
     showToast(err.message, 'error');
@@ -1171,6 +1475,8 @@ function openCreateModal() {
   taskDueDateInput.value = '';
   taskRecurringInput.value = 'none';
   taskTagsInput.value = '';
+  const taskPinned = document.getElementById('taskPinned');
+  if (taskPinned) taskPinned.checked = false;
 
   renderModalSubtasks();
   taskModal.style.display = 'flex';
@@ -1201,6 +1507,8 @@ function openEditModal(task) {
   taskDueDateInput.value = task.dueDate || '';
   taskRecurringInput.value = task.recurring || 'none';
   taskTagsInput.value = (task.tags || []).join(', ');
+  const taskPinned = document.getElementById('taskPinned');
+  if (taskPinned) taskPinned.checked = Boolean(task.pinned);
 
   renderModalSubtasks();
   taskModal.style.display = 'flex';
@@ -1283,6 +1591,9 @@ async function handleFormSubmit(e) {
     .map(t => t.trim())
     .filter(Boolean);
 
+  const taskPinned = document.getElementById('taskPinned');
+  const pinned = taskPinned ? taskPinned.checked : false;
+
   const payload = {
     title,
     description: taskDescInput.value.trim(),
@@ -1292,7 +1603,8 @@ async function handleFormSubmit(e) {
     dueDate: taskDueDateInput.value || null,
     recurring: taskRecurringInput.value,
     tags,
-    subtasks: state.modalSubtasks
+    subtasks: state.modalSubtasks,
+    pinned
   };
 
   try {
@@ -1316,7 +1628,12 @@ async function handleFormSubmit(e) {
       throw new Error(err.error || 'Failed to save task');
     }
 
-    showToast(state.editingTaskId ? 'Task updated' : 'Task created successfully', 'success');
+    if (state.editingTaskId) {
+      showToast('Task updated', 'success');
+    } else {
+      AudioEngine.playCreate();
+      showToast('Task created successfully', 'success');
+    }
     closeModal();
     await loadData();
   } catch (err) {
@@ -1346,14 +1663,20 @@ function renderPaletteResults(query) {
   // Static commands list
   const commands = [
     { title: '＋ Create New Task', action: () => { closeCommandPalette(); openCreateModal(); } },
+    { title: '✨ AI Executive Sprint Briefing', action: () => { closeCommandPalette(); loadAiSummary(); } },
+    { title: '⏱️ Open Focus / Pomodoro Timer', action: () => { closeCommandPalette(); PomodoroEngine.toggleWidget(); } },
     { title: '📋 Switch to Kanban Board', action: () => { closeCommandPalette(); switchView('kanban'); } },
     { title: '📑 Switch to Task List', action: () => { closeCommandPalette(); switchView('list'); } },
     { title: '📊 Open Analytics & Charts', action: () => { closeCommandPalette(); switchView('analytics'); } },
     { title: '📅 Open Calendar', action: () => { closeCommandPalette(); switchView('calendar'); } },
     { title: '⏱️ Open Timeline View', action: () => { closeCommandPalette(); switchView('timeline'); } },
     { title: '🕸️ View Workflow Flowchart', action: () => { closeCommandPalette(); switchView('workflow'); } },
-    { title: '☀️ / 🌙 Toggle Theme', action: () => { toggleTheme(); closeCommandPalette(); } },
-    { title: '⬇ Export JSON Backup', action: () => { window.location.href = '/api/tasks/export'; closeCommandPalette(); } }
+    { title: '📊 Export CSV Spreadsheet', action: () => { window.location.href = '/api/tasks/export/csv'; closeCommandPalette(); } },
+    { title: '⬇ Export JSON Backup', action: () => { window.location.href = '/api/tasks/export'; closeCommandPalette(); } },
+    { title: '🖨️ Print Tasks / PDF View', action: () => { closeCommandPalette(); setTimeout(() => window.print(), 200); } },
+    { title: '🔊 Toggle Audio Sound Effects', action: () => { AudioEngine.toggle(); closeCommandPalette(); } },
+    { title: '⚙️ AI Intelligence Settings', action: () => { closeCommandPalette(); document.getElementById('aiSettingsModal').style.display = 'flex'; } },
+    { title: '☀️ / 🌙 Toggle Theme', action: () => { toggleTheme(); closeCommandPalette(); } }
   ];
 
   // Filter commands
@@ -1524,12 +1847,18 @@ function setupEventListeners() {
 
     // Escape closes modals
     if (e.key === 'Escape') {
+      const aiSummaryModal = document.getElementById('aiSummaryModal');
+      const aiSettingsModal = document.getElementById('aiSettingsModal');
       if (commandPaletteModal && commandPaletteModal.style.display === 'flex') {
         closeCommandPalette();
       } else if (taskModal && taskModal.style.display === 'flex') {
         closeModal();
       } else if (confirmModal && confirmModal.style.display === 'flex') {
         closeConfirm();
+      } else if (aiSummaryModal && aiSummaryModal.style.display === 'flex') {
+        aiSummaryModal.style.display = 'none';
+      } else if (aiSettingsModal && aiSettingsModal.style.display === 'flex') {
+        aiSettingsModal.style.display = 'none';
       }
       return;
     }
@@ -1629,6 +1958,204 @@ function setupEventListeners() {
       state.filters.search = '';
       loadData();
     });
+  }
+
+  // Initialize Pomodoro Focus Engine
+  PomodoroEngine.init();
+
+  // Sound FX Toggle & Initial Icon
+  const soundToggle = document.getElementById('soundToggle');
+  const soundIcon = document.getElementById('soundIcon');
+  if (soundIcon) soundIcon.textContent = AudioEngine.enabled ? '🔊' : '🔇';
+  if (soundToggle) soundToggle.addEventListener('click', () => AudioEngine.toggle());
+
+  // Export CSV Spreadsheet & Print
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', () => {
+      window.location.href = '/api/tasks/export/csv';
+    });
+  }
+
+  const printBtn = document.getElementById('printBtn');
+  if (printBtn) {
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  // AI Polish Button
+  const aiPolishBtn = document.getElementById('aiPolishBtn');
+  if (aiPolishBtn) {
+    aiPolishBtn.addEventListener('click', async () => {
+      const title = taskTitleInput.value.trim();
+      if (!title) {
+        showToast('Please type a task title first to polish with AI', 'info');
+        taskTitleInput.focus();
+        return;
+      }
+      const origText = aiPolishBtn.textContent;
+      aiPolishBtn.textContent = '✨ Polishing...';
+      aiPolishBtn.disabled = true;
+      try {
+        const res = await AIEngine.polish(title, taskDescInput.value);
+        if (res.data) {
+          if (res.data.title) taskTitleInput.value = res.data.title;
+          if (res.data.description) taskDescInput.value = res.data.description;
+          if (res.data.priority) taskPriorityInput.value = res.data.priority;
+          if (res.data.category) taskCategoryInput.value = res.data.category;
+          if (Array.isArray(res.data.tags) && res.data.tags.length > 0) {
+            taskTagsInput.value = res.data.tags.join(', ');
+          }
+          showToast(`✨ Task enhanced (${res.source === 'gemini-1.5-flash' ? 'Gemini AI' : 'Neural Engine'})`, 'success');
+          AudioEngine.playCreate();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        aiPolishBtn.textContent = origText;
+        aiPolishBtn.disabled = false;
+      }
+    });
+  }
+
+  // AI Subtasks Breakdown Button
+  const aiBreakdownBtn = document.getElementById('aiBreakdownBtn');
+  if (aiBreakdownBtn) {
+    aiBreakdownBtn.addEventListener('click', async () => {
+      const title = taskTitleInput.value.trim();
+      if (!title) {
+        showToast('Please type a task title first to break down', 'info');
+        taskTitleInput.focus();
+        return;
+      }
+      const origText = aiBreakdownBtn.textContent;
+      aiBreakdownBtn.textContent = '✨ Generating...';
+      aiBreakdownBtn.disabled = true;
+      try {
+        const res = await AIEngine.breakdown(title, taskDescInput.value);
+        if (Array.isArray(res.subtasks) && res.subtasks.length > 0) {
+          res.subtasks.forEach(s => {
+            state.modalSubtasks.push({
+              id: crypto.randomUUID ? crypto.randomUUID() : `sub-${Date.now()}-${Math.random()}`,
+              title: s.title,
+              completed: false
+            });
+          });
+          renderModalSubtasks();
+          showToast(`✨ Generated ${res.subtasks.length} subtasks (${res.source === 'gemini-1.5-flash' ? 'Gemini AI' : 'Neural Engine'})`, 'success');
+          AudioEngine.playCreate();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        aiBreakdownBtn.textContent = origText;
+        aiBreakdownBtn.disabled = false;
+      }
+    });
+  }
+
+  // AI Executive Sprint Briefing
+  const aiSummaryBtn = document.getElementById('aiSummaryBtn');
+  const aiSummaryModal = document.getElementById('aiSummaryModal');
+  const closeAiSummaryBtn = document.getElementById('closeAiSummaryBtn');
+  const closeAiSummaryBtn2 = document.getElementById('closeAiSummaryBtn2');
+  const refreshAiSummaryBtn = document.getElementById('refreshAiSummaryBtn');
+
+  if (aiSummaryBtn) aiSummaryBtn.addEventListener('click', loadAiSummary);
+  if (refreshAiSummaryBtn) refreshAiSummaryBtn.addEventListener('click', loadAiSummary);
+  if (closeAiSummaryBtn) closeAiSummaryBtn.addEventListener('click', () => { if (aiSummaryModal) aiSummaryModal.style.display = 'none'; });
+  if (closeAiSummaryBtn2) closeAiSummaryBtn2.addEventListener('click', () => { if (aiSummaryModal) aiSummaryModal.style.display = 'none'; });
+  if (aiSummaryModal) {
+    aiSummaryModal.addEventListener('click', (e) => {
+      if (e.target === aiSummaryModal) aiSummaryModal.style.display = 'none';
+    });
+  }
+
+  // AI Settings Modal
+  const aiSettingsBtn = document.getElementById('aiSettingsBtn');
+  const aiSettingsModal = document.getElementById('aiSettingsModal');
+  const closeAiSettingsBtn = document.getElementById('closeAiSettingsBtn');
+  const saveAiSettingsBtn = document.getElementById('saveAiSettingsBtn');
+  const clearAiKeyBtn = document.getElementById('clearAiKeyBtn');
+  const geminiApiKeyInput = document.getElementById('geminiApiKeyInput');
+
+  if (aiSettingsBtn && aiSettingsModal) {
+    aiSettingsBtn.addEventListener('click', () => {
+      if (geminiApiKeyInput) geminiApiKeyInput.value = AIEngine.getApiKey();
+      aiSettingsModal.style.display = 'flex';
+    });
+  }
+
+  if (closeAiSettingsBtn) {
+    closeAiSettingsBtn.addEventListener('click', () => {
+      if (aiSettingsModal) aiSettingsModal.style.display = 'none';
+    });
+  }
+
+  if (aiSettingsModal) {
+    aiSettingsModal.addEventListener('click', (e) => {
+      if (e.target === aiSettingsModal) aiSettingsModal.style.display = 'none';
+    });
+  }
+
+  if (saveAiSettingsBtn) {
+    saveAiSettingsBtn.addEventListener('click', () => {
+      const key = geminiApiKeyInput ? geminiApiKeyInput.value.trim() : '';
+      AIEngine.setApiKey(key);
+      showToast(key ? 'Gemini API Key saved in local storage' : 'Using neural fallback engine', 'success');
+      if (aiSettingsModal) aiSettingsModal.style.display = 'none';
+    });
+  }
+
+  if (clearAiKeyBtn) {
+    clearAiKeyBtn.addEventListener('click', () => {
+      AIEngine.setApiKey('');
+      if (geminiApiKeyInput) geminiApiKeyInput.value = '';
+      showToast('Gemini key cleared', 'info');
+    });
+  }
+}
+
+async function loadAiSummary() {
+  const aiSummaryModal = document.getElementById('aiSummaryModal');
+  const aiSummaryContent = document.getElementById('aiSummaryContent');
+  if (!aiSummaryContent) return;
+
+  aiSummaryContent.innerHTML = `
+    <div class="ai-loading-state">
+      <div class="ai-spinner"></div>
+      <p>Analyzing sprint telemetry, board constraints, and critical bottlenecks...</p>
+    </div>
+  `;
+  if (aiSummaryModal) aiSummaryModal.style.display = 'flex';
+
+  try {
+    const res = await AIEngine.summary();
+    const data = res.data;
+    const isOptimal = data.healthStatus === 'OPTIMAL';
+    aiSummaryContent.innerHTML = `
+      <div class="ai-briefing-headline">${escapeHtml(data.headline)}</div>
+      <span class="ai-health-badge ${isOptimal ? 'ai-health-optimal' : 'ai-health-attention'}">
+        ● SYSTEM STATUS: ${escapeHtml(data.healthStatus)}
+      </span>
+      <ul class="ai-briefing-highlights">
+        ${(data.highlights || []).map(h => `<li>${escapeHtml(h)}</li>`).join('')}
+      </ul>
+      <div class="ai-recommendation-box">
+        <strong>💡 Strategic Recommendation:</strong> ${escapeHtml(data.focusRecommendation)}
+      </div>
+      <div style="margin-top: 14px; font-size: 11px; color: var(--text-muted); text-align: right;">
+        Engine: ${res.source === 'gemini-1.5-flash' ? 'Google Gemini 1.5 Flash' : 'TaskFlow Neural Engine'}
+      </div>
+    `;
+    AudioEngine.playPin();
+  } catch (err) {
+    aiSummaryContent.innerHTML = `
+      <div style="padding: 24px; color: #ff5577; text-align: center;">
+        <p>⚠️ Failed to generate AI summary: ${escapeHtml(err.message)}</p>
+      </div>
+    `;
   }
 }
 

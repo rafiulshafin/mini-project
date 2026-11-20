@@ -160,6 +160,7 @@ class TaskStorage {
       subtasks,
       recurring: ['none', 'daily', 'weekly', 'monthly'].includes(t.recurring) ? t.recurring : 'none',
       dependencies: Array.isArray(t.dependencies) ? t.dependencies.filter(Boolean) : [],
+      pinned: Boolean(t.pinned),
       archived: Boolean(t.archived || status === 'archived'),
       dueDate: t.dueDate || null,
       createdAt: t.createdAt || new Date().toISOString(),
@@ -258,6 +259,13 @@ class TaskStorage {
         break;
     }
 
+    // Pinned tasks float to top while preserving sort order
+    tasks.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return 0;
+    });
+
     return tasks;
   }
 
@@ -277,7 +285,8 @@ class TaskStorage {
     subtasks = [],
     recurring = 'none',
     dependencies = [],
-    progress = 0
+    progress = 0,
+    pinned = false
   }) {
     if (!title || typeof title !== 'string' || !title.trim()) {
       throw new Error('Task title is required');
@@ -298,6 +307,7 @@ class TaskStorage {
       recurring: recurring || 'none',
       dependencies: Array.isArray(dependencies) ? dependencies : [],
       progress: typeof progress === 'number' ? progress : 0,
+      pinned: Boolean(pinned),
       archived: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -367,6 +377,18 @@ class TaskStorage {
     if (Array.isArray(task.subtasks) && task.subtasks.length > 0) {
       task.subtasks.forEach(s => s.completed = willBeCompleted);
     }
+    task.updatedAt = new Date().toISOString();
+
+    await this._writeRaw(tasks);
+    return task;
+  }
+
+  async togglePin(id) {
+    const tasks = await this._readRaw();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return null;
+
+    task.pinned = !task.pinned;
     task.updatedAt = new Date().toISOString();
 
     await this._writeRaw(tasks);

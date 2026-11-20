@@ -125,3 +125,76 @@ test('GET /api/stats returns metrics correctly', async () => {
   assert.ok('statusBreakdown' in json.data);
   assert.ok('notifications' in json.data);
 });
+
+test('PATCH /api/tasks/:id/pin toggles pin status', async () => {
+  const createRes = await fetch(`${baseUrl}/api/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: 'Task to be Pinned' })
+  });
+  const created = await createRes.json();
+  const id = created.data.id;
+  assert.equal(created.data.pinned, false);
+
+  const pinRes = await fetch(`${baseUrl}/api/tasks/${id}/pin`, { method: 'PATCH' });
+  assert.equal(pinRes.status, 200);
+  const pinned = await pinRes.json();
+  assert.equal(pinned.success, true);
+  assert.equal(pinned.data.pinned, true);
+
+  const unpinRes = await fetch(`${baseUrl}/api/tasks/${id}/pin`, { method: 'PATCH' });
+  const unpinned = await unpinRes.json();
+  assert.equal(unpinned.data.pinned, false);
+
+  await fetch(`${baseUrl}/api/tasks/${id}`, { method: 'DELETE' });
+});
+
+test('GET /api/tasks/export/csv exports CSV format', async () => {
+  const res = await fetch(`${baseUrl}/api/tasks/export/csv`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/csv/);
+  const text = await res.text();
+  assert.match(text, /"ID","Title","Description"/);
+});
+
+test('POST /api/ai/breakdown generates subtasks', async () => {
+  const res = await fetch(`${baseUrl}/api/ai/breakdown`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: 'Implement OAuth Authentication', description: 'Google and GitHub login' })
+  });
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.success, true);
+  assert.ok(Array.isArray(json.subtasks));
+  assert.ok(json.subtasks.length >= 3);
+  assert.ok(json.subtasks[0].title);
+});
+
+test('POST /api/ai/polish enhances task title and description', async () => {
+  const res = await fetch(`${baseUrl}/api/ai/polish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: 'fix navigation bar bug on mobile' })
+  });
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.success, true);
+  assert.ok(json.data.title);
+  assert.ok(json.data.description);
+  assert.ok(json.data.category);
+  assert.ok(json.data.priority);
+});
+
+test('POST /api/ai/summary returns executive briefing', async () => {
+  const res = await fetch(`${baseUrl}/api/ai/summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.success, true);
+  assert.ok(json.data.headline);
+  assert.ok(Array.isArray(json.data.highlights));
+  assert.ok(json.data.focusRecommendation);
+});

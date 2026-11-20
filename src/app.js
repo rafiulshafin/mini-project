@@ -5,6 +5,7 @@ import { requestLogger } from './middleware/logger.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { taskRouter } from './routes/tasks.js';
 import { statsRouter } from './routes/stats.js';
+import { aiRouter } from './routes/ai.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +41,7 @@ export function createApp() {
   // API Routes
   app.use('/api/tasks', taskRouter);
   app.use('/api/stats', statsRouter);
+  app.use('/api/ai', aiRouter);
 
   // 404 & Error Handlers
   app.use(notFoundHandler);
